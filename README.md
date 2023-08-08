@@ -14,7 +14,5 @@ The basis of operation:
   * allow for a very large total number of tickets
 - random shuffle all the tickets
   * random seed comes from the program input
-  * number of shuffle rounds comes from the program input
 - display top N entries
-  * optionally removing duplicates
-
+  * duplicate names are not removed
