@@ -26,7 +26,7 @@ func main() {
 	}
 	defer inputFile.Close()
 
-	fmt.Printf("Program configuration:\n%v", conf)
+	fmt.Printf("Configuration: {%v}\n", conf)
 
 	input := raffle.Input(inputFile, conf.Multiplier)
 
