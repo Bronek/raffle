@@ -18,7 +18,9 @@ Program performs following steps:
   * program can handle large total number of tickets
 
 3. Random shuffle all the tickets
-  * random seed can be provided in program options; if not provided the program will use own seed (derived from time)
+  * random seed can be provided in program options
+  * if seed is not provided, the program will use system entropy
+  * user can request system entropy explicitly
 
 4. Display top N entries
   * duplicate names are not removed, so someone who bought a large number of tickets can appear more than once on output.
@@ -29,7 +31,7 @@ Program takes the following options:
 
 `--input` File to read entries from. Must be in comma-separated-values format, where first column is name and second column is number of tickets (decimal point is allowed). If filename is not provided, program will read entries from standard input.
 
-`--seed` Seed for PRNG. Same seed value will result in the same shuffle of the input data. If seed is not provided, program will use nanoseconds from the current time.
+`--seed` Seed for PRNG. Same seed value will result in the same shuffle of the input data. If seed is not provided or is explicitly set to 0, program will use system entropy.
 
 `--multiplier` Multiplier for the number of tickets. This is used to multiply input data, which is next rounded and used to generate tickets for each entry. For example if `--multiplier=100` and input contains number of tickets such as `1.20`, this will generate 120 tickets for such entry. Default 1, i.e. example `1.20` will generate 1 ticket.
 
@@ -39,4 +41,3 @@ Program takes the following options:
 
 - Improve error handling
 - Add unit tests
-- Improve default sorce of entropy
