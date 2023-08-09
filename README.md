@@ -44,6 +44,21 @@ seed is not provided or is explicitly set to 0, program will use system entropy.
 Options can be followed by name of the .csv file to read entries from. If filename is not provided,
 program will read entries from the standard input.
 
+## Building raffle binary
+
+Run `go build ./cmd/raffle` in the project directory. Alternatively you can use the default target
+of the convenience `Makefile`, which will also run tests and save the binary in `dist` subdirectory.
+
+# Known issues
+
+When building on Windows with go version 1.20, Windows Defender may break the build and report false
+positive like one below. This is known problem with Go on Windows, explained here
+https://go.dev/doc/faq#virus
+
+    Operation did not complete successfully because the file contains a virus or potentially unwanted software.
+
+Suggested workaround is to try a different go version on Windows; 1.21 and 1.19 are both expected
+to work.
 
 # TODO
 
