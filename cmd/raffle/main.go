@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"flag"
 	"fmt"
 	"math"
@@ -11,7 +12,7 @@ import (
 )
 
 func main() {
-	conf, help, err := options.Parse(os.Args[0], os.Args[1:])
+	conf, help, err := options.Parse(os.Args[0], os.Args[1:], rand.Reader)
 	if err == flag.ErrHelp {
 		fmt.Println(help)
 		os.Exit(2)

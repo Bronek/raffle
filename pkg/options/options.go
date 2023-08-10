@@ -2,27 +2,32 @@ package options
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/binary"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"time"
 )
 
 type Config struct {
-	Seed           int64
-	SeedFromSystem bool
-	Multiplier     int
-	N              int
-	args           []string
+	Seed            int64
+	SeedFromEntropy bool
+	Multiplier      int
+	N               int
+	args            []string
 }
 
 func (config Config) String() string {
-	return fmt.Sprintf("seed=%v system=%t multiplier=%v N=%v args=%+v",
-		config.Seed, config.SeedFromSystem, config.Multiplier, config.N, config.args)
+	fromEntropySource := "set explicitly"
+	if config.SeedFromEntropy {
+		fromEntropySource = "entropy source"
+	}
+	return fmt.Sprintf("seed=%v (%s) multiplier=%v N=%v input=%+v",
+		config.Seed, fromEntropySource, config.Multiplier, config.N, config.args)
 }
 
-func Parse(progname string, args []string) (config *Config, help string, err error) {
+func Parse(progname string, args []string, entropy io.Reader) (config *Config, help string, err error) {
 	flags := flag.NewFlagSet(progname, flag.ContinueOnError)
 	var buf bytes.Buffer
 	flags.SetOutput(&buf)
@@ -33,7 +38,7 @@ func Parse(progname string, args []string) (config *Config, help string, err err
 		"seed",
 		0,
 		"Random seed for shuffle operation. If not provided or set to 0,\n"+
-			"program will use system entropy")
+			"program will use system entropy source")
 	flags.IntVar(
 		&result.Multiplier,
 		"multiplier",
@@ -59,24 +64,50 @@ func Parse(progname string, args []string) (config *Config, help string, err err
 		result.args = []string{}
 	}
 
-	result.SeedFromSystem = false
-	// Loop here because Seed=0 has special meaning. We don't want it if system entropy
-	// returns this value, but we also do not want infinite loop if the system is broken
+	result.SeedFromEntropy = false
+	// Loop here because Seed=0 has special meaning. We don't want it even if entropy source
+	// returns this value, but we also do not want infinite loop if the entropy source is broken.
+	// Retries allow us to use real-world entropy sources, which can be intermittent or slow.
+	desired := 8
+	retries := 3
+	random := make([]byte, 0, desired)
 	for i := 0; result.Seed == 0; i++ {
-		if i > 3 {
-			return nil, "", fmt.Errorf("System entropy failure, 0 returned multiple times")
+		if i > retries {
+			return nil, "", fmt.Errorf("Entropy source failure, 0 returned repeatedly")
+		}
+		// Real-world entropy source may need time to collect entropy
+		time.Sleep(time.Duration(i) * time.Millisecond)
+
+		b := make([]byte, desired)
+		size, err := entropy.Read(b)
+		if err != nil {
+			if i == retries {
+				return nil, "", fmt.Errorf("Failed to read entropy source: %w", err)
+			} else {
+				continue
+			}
 		}
 
-		const desired = 16
-		b := make([]byte, desired)
-		size, err := rand.Read(b)
-		if err != nil {
-			return nil, "", fmt.Errorf("Failed to read system entropy: %w", err)
-		} else if size < desired {
-			return nil, "", fmt.Errorf("Failed to read desired size from system entropy")
+		// Filter out all all-zeros-reads from entropy source.
+		allzeros := true
+		for j := 0; j < size; j++ {
+			if b[j] != 0 {
+				allzeros = false
+			}
 		}
-		result.Seed = int64(binary.BigEndian.Uint64(b))
-		result.SeedFromSystem = true
+		if allzeros {
+			continue
+		}
+
+		random = append(random, b[:size]...)
+		desired -= size
+		if desired == 0 {
+			result.Seed = int64(binary.BigEndian.Uint64(random))
+			result.SeedFromEntropy = true
+			// Since we filtered out allzeros, we know at this point that Seed != 0
+		} else if i == retries {
+			return nil, "", fmt.Errorf("Failed to read desired size from entropy source")
+		}
 	}
 	return &result, "", nil
 }
